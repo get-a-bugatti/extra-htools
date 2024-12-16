@@ -1,0 +1,2 @@
+cat *.txt | grep -F ".dell.com" | awk -F'-- ' '{print $2}' | tr ' ' '\n' | tr '[' ' ' | tr ']' ' ' | grep -F ".dell.com" | sort -u
+

