@@ -15,9 +15,14 @@ if [ ! -f "$TARGET_FILE" ]; then
     exit 1
 fi
 
-# Exporting PDCP API Key
+# Exporting API Keys
 echo "[X] Exporting PDCP_API_KEY ..."
 export PDCP_API_KEY=b235613b-dc7b-43ef-96cf-8c58e8b692b9
+echo "[X] Exporting ST_KEY ..."
+export ST_KEY=ZPyXv5sf9CTMRqySHA6HU7t7SFcYZRtg
+echo "[X] Exporting FB_TOKEN ..."
+export FB_TOKEN='2301127633615870|PlF2kM89tNwpeZhE1Ij-sgkssVA'
+
 
 # Iterate through each target in the file
 while IFS= read -r TARGET; do
@@ -31,7 +36,7 @@ while IFS= read -r TARGET; do
 
     # Hackertarget.com enumeration
     echo "[*] Fetching subdomains from hackertarget.com..."
-    curl -s "https://api.hackertarget.com/hostsearch/?q=$TARGET" | cut -d, -f1 | sort -u > "$OUTPUT_DIR/hackertarget.txt"
+    curl -s "https://api.hackertarget.com/hostsearch/?q=$TARGET" | cut -d ',' -f1 | sort -u > "$OUTPUT_DIR/hackertarget.txt"
 
     # crt.sh enumeration
     echo "[*] Fetching subdomains from crt.sh..."
@@ -45,17 +50,21 @@ while IFS= read -r TARGET; do
     echo "[*] Fetching subdomains from AlienVault OTX..."
     curl -s "https://otx.alienvault.com/api/v1/indicators/domain/$TARGET/url_list?limit=100&page=1" | grep -o '"hostname": *"[^"]*' | sed 's/"hostname": "//' | sort -u > "$OUTPUT_DIR/alienvault.txt"
 
+    # SecurityTrails enumeration 
+    echo "[*] SecurityTrails ..."
+    curl -s "https://api.securitytrails.com/v1/domain/$TARGET/subdomains?apikey=$ST_KEY" | jq -r '.subdomains[] | "\(.).'"$TARGET"'"' | sort -u >> "$OUTPUT_DIR/securitytrails.txt"
+
     # subdomain.center enumeration
     echo "[*] Fetching subdomains from subdomain.center..."
     curl -s "https://api.subdomain.center/?domain=$TARGET" | jq -r '.[]' | sort -u > "$OUTPUT_DIR/subcenter.txt"
 
+    # Facebook CT Logs
+    echo "[*] Looking into subdomains from FaceBook's CT logs..."
+    curl -sG "https://graph.facebook.com/certificates" --data-urlencode "query=$TARGET" --data-urlencode "fields=domains" --data-urlencode "access_token=$FB_TOKEN" | jq -r '.data[].domains[]' | grep -E "\b${TARGET//./\.}$|^[^.]*\.${TARGET//./\.}$" | sed 's/^\.//' | sort -u > "$OUTPUT_DIR/facebook_ct.txt"
+
     # Subfinder enumeration
     echo "[*] Running Subfinder..."
     subfinder -d "$TARGET" -t 200 -silent -all -recursive -o "$OUTPUT_DIR/subfinder.txt"
-
-    # Sublist3r enumeration
-    echo "[*] Running Sublist3r..."
-    sublist3r -d "$TARGET" -t 20 -o "$OUTPUT_DIR/sublist3r.txt"
 
     # Chaos enumeration
     echo "[*] Fetching subdomains from Chaos..."
